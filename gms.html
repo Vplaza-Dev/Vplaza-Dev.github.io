@@ -29,7 +29,41 @@
 				padding: 0;
 				box-sizing: border-box;
 				}
-				
+				.close-modal {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(40, 40, 40, 0.8);
+    border: 1px solid rgba(255, 165, 0, 0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.close-modal:hover {
+    background: rgba(60, 60, 60, 0.8);
+    border-color: rgba(255, 165, 0, 0.5);
+}
+
+.close-modal div {
+    width: 15px;
+    height: 2px;
+    background: rgba(255, 165, 0, 1); /* Changed to orange color */
+    position: absolute;
+}
+
+.close-modal div:first-child {
+    transform: rotate(45deg);
+}
+
+.close-modal div:last-child {
+    transform: rotate(-45deg);
+}
 				body {
 				background-color: #000;
 				color: var(--text-color);
@@ -697,21 +731,24 @@
         </div>
 		</div>
 
-		<div class="modal-overlay" id="game-modal">
-			<div class="modal-content">
-				<div class="close-modal" id="close-modal"></div>
-				<div class="modal-header">
-					<div class="modal-game-icon">
-						<img id="modal-game-img" src="" alt="Game">
-                </div>
-						<h2 class="modal-title" id="modal-game-title">Game Title</h2>
-					</div>
-					<div class="modal-actions">
-						<button class="modal-btn play-btn" id="play-game-btn">PLAY NOW</button>
-						<button class="modal-btn cancel-btn" id="cancel-game-btn">CANCEL</button>
-					</div>
-				</div>
-			</div>
+<div class="modal-overlay" id="game-modal">
+    <div class="modal-content">
+        <div class="close-modal" id="close-modal">
+            <div></div>
+            <div></div>
+        </div>
+        <div class="modal-header">
+            <div class="modal-game-icon">
+                <img id="modal-game-img" src="" alt="Game">
+            </div>
+            <h2 class="modal-title" id="modal-game-title">Game Title</h2>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn play-btn" id="play-game-btn">PLAY NOW</button>
+            <button class="modal-btn cancel-btn" id="cancel-game-btn">CANCEL</button>
+        </div>
+    </div>
+</div>
 
 			<!-- Fullscreen iframe modal -->
 			<div id="iframe-modal">
