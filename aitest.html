@@ -1,3 +1,5 @@
+<link rel="icon" type="image/png" href="favicons/VAI.png">
+
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XWMFDM1WRX"></script>
 <script>
@@ -7,7 +9,7 @@
 
   gtag('config', 'G-XWMFDM1WRX');
 </script>
-<link rel="icon" href="/favicons/ailogo.png">
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -400,9 +402,9 @@
         .code-block {
             position: relative;
             margin: 12px 0;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
         }
 
         .code-header {
@@ -426,17 +428,20 @@
             background: transparent;
             border: none;
             color: var(--text-secondary);
-            cursor: not-allowed;
+            cursor: pointer;
             display: flex;
             align-items: center;
             gap: 4px;
             font-family: 'Poppins', sans-serif;
             font-size: 12px;
-            transition: color 0.2s;
+            transition: all 0.2s;
+            padding: 4px 8px;
+            border-radius: 4px;
         }
 
         .copy-code-btn:hover {
-            color: var(--text-secondary);
+            color: var(--text-primary);
+            background-color: rgba(255, 255, 255, 0.1);
         }
 
         pre {
@@ -770,7 +775,7 @@
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-logo">
-                    <img src="/favicons/ailogo.png" alt="VAI Logo">
+                    <img src="/favicons/VAI.png" alt="VAI Logo">
                     <span>VAI Chat</span>
                 </div>
                 <button class="sidebar-toggle" id="sidebar-toggle">☰</button>
@@ -897,6 +902,209 @@
         mobileSidebarToggle: document.querySelector(".mobile-sidebar-toggle"),
         chatList: document.getElementById("chat-list"),
         suggestionsContainer: document.querySelector(".welcome-suggestions")
+    };
+
+    // ===== UI Utilities =====
+    const UIUtils = {
+        showToast(message, duration = CONFIG.uiSettings.toastDuration) {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            const toast = document.createElement("div");
+            toast.className = "toast";
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            toast.offsetHeight;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 500);
+            }, duration);
+        },
+
+        truncateText(text, maxLength) {
+            if (!text) return '';
+            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+        },
+
+        createTypingIndicator(container) {
+            const typingDiv = document.createElement("div");
+            typingDiv.classList.add("typing-indicator");
+            typingDiv.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+
+            if (container) {
+                container.appendChild(typingDiv);
+            } else {
+                let messageContainer = DOM.chatBox.querySelector('.message-container');
+                if (!messageContainer) {
+                    messageContainer = document.createElement('div');
+                    messageContainer.classList.add('message-container');
+                    DOM.chatBox.appendChild(messageContainer);
+                }
+                messageContainer.appendChild(typingDiv);
+            }
+
+            DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
+            return typingDiv;
+        },
+
+        renderMarkdown(text) {
+            if (!text) return '';
+
+            text = text.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, function(match, language, code) {
+                const escapedCode = DOMPurify.sanitize(code.replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+                const langClass = language ? `language-${language}` : 'language-plaintext';
+                return `<div class="code-block"><pre><code class="${langClass}">${escapedCode}</code></pre></div>`;
+            });
+
+            text = text.replace(/`(.*?)`/g, function(match, code) {
+                return `<code>${DOMPurify.sanitize(code.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}</code>`;
+            });
+
+            text = text
+                .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+                .replace(/\*(.*?)\*/g, "<i>$1</i>")
+                .replace(/\n/g, "<br>")
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+            return DOMPurify.sanitize(text);
+        },
+
+        processCodeBlocks(element) {
+            if (!element) return;
+
+            const codeBlocks = element.querySelectorAll("pre");
+            codeBlocks.forEach(block => {
+                // Skip if already processed
+                if (block.parentNode.classList.contains('processed-code-block')) return;
+                block.parentNode.classList.add('processed-code-block');
+
+                // Create code block wrapper
+                const codeWrapper = document.createElement("div");
+                codeWrapper.classList.add("code-block");
+
+                // Create code header with language and copy button
+                const codeHeader = document.createElement("div");
+                codeHeader.classList.add("code-header");
+
+                // Determine the language
+                let language = "Code";
+                const codeElement = block.querySelector("code");
+                if (codeElement && codeElement.className) {
+                    const langMatch = codeElement.className.match(/language-(\w+)/);
+                    if (langMatch && langMatch[1]) {
+                        language = langMatch[1].charAt(0).toUpperCase() + langMatch[1].slice(1);
+                    }
+                }
+
+                // Add language label
+                const langSpan = document.createElement("span");
+                langSpan.classList.add("code-language");
+                langSpan.textContent = language;
+                codeHeader.appendChild(langSpan);
+
+                // Create copy button with functionality
+                const copyButton = document.createElement("button");
+                copyButton.classList.add("copy-code-btn");
+                copyButton.innerHTML = '<i class="bi bi-clipboard"></i> <span>Copy code</span>';
+
+                // Add click handler that actually works
+                copyButton.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Get code from the code element
+                    const text = codeElement ? codeElement.textContent : block.textContent;
+
+                    // Use the clipboard API directly
+                    UIUtils.copyToClipboard(text)
+                        .then((success) => {
+                            if (success) {
+                                // Show success UI
+                                copyButton.innerHTML = '<i class="bi bi-check2"></i> <span>Copied!</span>';
+                                UIUtils.showToast("Code copied to clipboard");
+
+                                // Reset button after delay
+                                setTimeout(() => {
+                                    copyButton.innerHTML = '<i class="bi bi-clipboard"></i> <span>Copy code</span>';
+                                }, 2000);
+                            } else {
+                                UIUtils.showToast("Failed to copy code");
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Copy failed:', err);
+                            UIUtils.showToast("Failed to copy code");
+                        });
+                };
+
+                // Add the button to the header
+                codeHeader.appendChild(copyButton);
+
+                // Assemble the code block
+                block.parentNode.insertBefore(codeWrapper, block);
+                codeWrapper.appendChild(codeHeader);
+                codeWrapper.appendChild(block);
+
+                // Apply syntax highlighting
+                if (window.Prism) {
+                    Prism.highlightElement(block);
+                }
+            });
+        },
+
+        copyToClipboard(text) {
+            // Try the modern Clipboard API first
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                return navigator.clipboard.writeText(text)
+                    .then(() => true)
+                    .catch(err => {
+                        console.error('Clipboard API failed:', err);
+                        // Fall back to the legacy approach
+                        return this.legacyCopyToClipboard(text);
+                    });
+            } else {
+                // Use legacy approach and return a resolved promise for consistent API
+                const success = this.legacyCopyToClipboard(text);
+                return Promise.resolve(success);
+            }
+        },
+
+        legacyCopyToClipboard(text) {
+            try {
+                // Create a temporary textarea element
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+
+                // Make the textarea out of viewport
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-999999px';
+                textarea.style.top = '-999999px';
+
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+
+                // Execute the copy command
+                const success = document.execCommand('copy');
+
+                // Clean up
+                document.body.removeChild(textarea);
+
+                return success;
+            } catch (err) {
+                console.error('Legacy copy method failed:', err);
+                return false;
+            }
+        }
     };
 
     // ===== Application State =====
@@ -1052,127 +1260,6 @@
                     MessageManager.sendMessage();
                 });
                 DOM.suggestionsContainer.appendChild(suggestionItem);
-            });
-        }
-    };
-
-    // ===== UI Utilities =====
-    const UIUtils = {
-        showToast(message, duration = CONFIG.uiSettings.toastDuration) {
-            const existingToast = document.querySelector('.toast');
-            if (existingToast) {
-                existingToast.remove();
-            }
-
-            const toast = document.createElement("div");
-            toast.className = "toast";
-            toast.textContent = message;
-            document.body.appendChild(toast);
-
-            toast.offsetHeight;
-            toast.classList.add('show');
-
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 500);
-            }, duration);
-        },
-
-        truncateText(text, maxLength) {
-            if (!text) return '';
-            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-        },
-
-        createTypingIndicator(container) {
-            const typingDiv = document.createElement("div");
-            typingDiv.classList.add("typing-indicator");
-            typingDiv.innerHTML = `
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            `;
-
-            if (container) {
-                container.appendChild(typingDiv);
-            } else {
-                let messageContainer = DOM.chatBox.querySelector('.message-container');
-                if (!messageContainer) {
-                    messageContainer = document.createElement('div');
-                    messageContainer.classList.add('message-container');
-                    DOM.chatBox.appendChild(messageContainer);
-                }
-                messageContainer.appendChild(typingDiv);
-            }
-
-            DOM.chatBox.scrollTop = DOM.chatBox.scrollHeight;
-            return typingDiv;
-        },
-
-        renderMarkdown(text) {
-            if (!text) return '';
-
-            text = text.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, function(match, language, code) {
-                const escapedCode = DOMPurify.sanitize(code.replace(/</g, "&lt;").replace(/>/g, "&gt;"));
-                const langClass = language ? `language-${language}` : 'language-plaintext';
-                return `<div class="code-block"><pre><code class="${langClass}">${escapedCode}</code></pre></div>`;
-            });
-
-            text = text.replace(/`(.*?)`/g, function(match, code) {
-                return `<code>${DOMPurify.sanitize(code.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}</code>`;
-            });
-
-            text = text
-                .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
-                .replace(/\*(.*?)\*/g, "<i>$1</i>")
-                .replace(/\n/g, "<br>")
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-
-            return DOMPurify.sanitize(text);
-        },
-
-        processCodeBlocks(element) {
-            if (!element) return;
-
-            const codeBlocks = element.querySelectorAll("pre");
-            codeBlocks.forEach(block => {
-                if (block.parentNode.classList.contains('processed-code-block')) return;
-                block.parentNode.classList.add('processed-code-block');
-
-                const codeWrapper = document.createElement("div");
-                codeWrapper.classList.add("code-block");
-
-                const codeHeader = document.createElement("div");
-                codeHeader.classList.add("code-header");
-
-                let language = "Code";
-                const codeElement = block.querySelector("code");
-                if (codeElement && codeElement.className) {
-                    const langMatch = codeElement.className.match(/language-(\w+)/);
-                    if (langMatch && langMatch[1]) {
-                        language = langMatch[1].charAt(0).toUpperCase() + langMatch[1].slice(1);
-                    }
-                }
-
-                const langSpan = document.createElement("span");
-                langSpan.classList.add("code-language");
-                langSpan.textContent = language;
-                codeHeader.appendChild(langSpan);
-
-                const copyButton = document.createElement("button");
-                copyButton.classList.add("copy-code-btn");
-                copyButton.innerHTML = '<i class="bi bi-clipboard"></i> <span>Copy code</span>';
-                copyButton.addEventListener("click", function() {
-                    UIUtils.showToast("Code copying is disabled");
-                });
-
-                codeHeader.appendChild(copyButton);
-                block.parentNode.insertBefore(codeWrapper, block);
-                codeWrapper.appendChild(codeHeader);
-                codeWrapper.appendChild(block);
-
-                if (window.Prism) {
-                    Prism.highlightElement(block);
-                }
             });
         }
     };
@@ -1651,13 +1738,25 @@
         copyMessageContent(element) {
             if (!element) return;
 
-            if (element.closest('.code-block')) {
-                UIUtils.showToast("Code copying is disabled");
-                return;
+            // Check if this is inside a code block
+            const codeBlock = element.closest('.code-block');
+            if (codeBlock) {
+                // If it's a code block, extract just the code text
+                const codeElement = codeBlock.querySelector('code');
+                if (codeElement) {
+                    const codeText = codeElement.textContent;
+                    UIUtils.copyToClipboard(codeText).then(() => {
+                        UIUtils.showToast("Code copied to clipboard");
+                    }).catch(() => {
+                        UIUtils.showToast("Failed to copy code");
+                    });
+                    return;
+                }
             }
 
+            // For non-code-blocks, copy the entire text
             const text = element.innerText;
-            navigator.clipboard.writeText(text).then(() => {
+            UIUtils.copyToClipboard(text).then(() => {
                 UIUtils.showToast("Content copied to clipboard");
             }).catch(() => {
                 UIUtils.showToast("Failed to copy content");
